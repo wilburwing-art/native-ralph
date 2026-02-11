@@ -1,0 +1,22 @@
+# State files (created at runtime)
+.claude/ralph-loop.local.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Test artifacts
+test_tmp/
+test/tmp/
+*.tap
+
+# Node (for browser tests)
+node_modules/
+package-lock.json

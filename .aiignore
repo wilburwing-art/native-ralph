@@ -1,0 +1,16 @@
+# AI Ignore - Files AI assistants should not access
+# Works with Claude Code, Cursor, and other AI tools
+
+# State files (may contain prompts with sensitive info)
+# Note: These are in ~/.claude/, not in repo, but listed for reference
+
+# IDE configs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS files
+.DS_Store
+Thumbs.db

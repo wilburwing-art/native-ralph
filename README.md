@@ -69,6 +69,17 @@ Cancel the active Ralph loop.
 /cancel-ralph
 ```
 
+### /browser-loop
+
+Start a Ralph loop with Playwright browser test validation for front-end work.
+
+**Usage:**
+```bash
+/browser-loop "Fix mobile layout" --url http://localhost:3000 --max-iterations 15
+```
+
+See `browser-tests/README.md` for setup and usage.
+
 ## Prompt Writing Best Practices
 
 ### 1. Clear Completion Criteria
@@ -168,6 +179,34 @@ Keep trying until success. The loop handles retry logic automatically.
 - Successfully generated 6 repositories overnight in Y Combinator hackathon testing
 - One $50k contract completed for $297 in API costs
 - Created entire programming language ("cursed") over 3 months using this approach
+
+## Development
+
+### Running Tests
+
+```bash
+# Install bats (macOS)
+brew install bats-core
+
+# Run bash script tests
+bats test/*.bats
+
+# Run browser tests (requires npm install in browser-tests/)
+cd browser-tests && npm test
+```
+
+### Project Structure
+
+```
+ralph-loop/
+├── .claude-plugin/       # Plugin manifest
+├── commands/             # Slash command definitions
+├── hooks/                # Stop hook (core loop logic)
+├── scripts/              # Setup scripts
+├── test/                 # Bats tests for bash scripts
+├── browser-tests/        # Playwright tests for front-end loops
+└── .github/workflows/    # CI configuration
+```
 
 ## Learn More
 

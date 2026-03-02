@@ -1,0 +1,23 @@
+[project]
+name = "ralph-loop"
+version = "0.1.0"
+description = "Self-referential AI development loops with ADK multi-agent pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk>=1.0.0",
+    "google-genai>=1.0.0",
+]
+
+[project.scripts]
+adk-pipeline = "adk_agents.runner:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

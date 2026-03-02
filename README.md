@@ -180,6 +180,42 @@ Keep trying until success. The loop handles retry logic automatically.
 - One $50k contract completed for $297 in API costs
 - Created entire programming language ("cursed") over 3 months using this approach
 
+## ADK Multi-Agent Pipeline
+
+The repo includes a Python-based multi-agent orchestration layer built on [Google ADK](https://github.com/google/adk-python). It uses 5 specialized agents wired into a `SequentialAgent` + `LoopAgent` pipeline for autonomous UI refinement.
+
+### Architecture
+
+```
+SequentialAgent("ui_refinement_pipeline")
+├── ScreenshotAgent     → captures baseline screenshot + initial test run
+├── LoopAgent("refinement_loop", max_iterations=N)
+│   ├── AnalyzerAgent   → reads test failures, identifies UI issues
+│   ├── FixerAgent      → applies code changes to fix issues
+│   └── ValidatorAgent  → re-runs tests, calls exit_loop when passing
+└── ReporterAgent       → writes final summary report
+```
+
+Agents share data via ADK session state. Tools shell out to the existing Node.js Playwright scripts (`screenshot.js`, `validate.js`) — no reimplementation of browser logic.
+
+### Usage
+
+```bash
+# Via slash command
+/adk-loop --url http://localhost:3000 --max-iterations 10
+
+# Via CLI
+uv run -m adk_agents --url http://localhost:3000 --max-iterations 10
+```
+
+Requires `GOOGLE_API_KEY` environment variable for the default Gemini model. Override model via `ADK_MODEL` env var.
+
+### ADK Pipeline Tests
+
+```bash
+uv run pytest tests/ -v
+```
+
 ## Development
 
 ### Running Tests
@@ -193,6 +229,9 @@ bats test/*.bats
 
 # Run browser tests (requires npm install in browser-tests/)
 cd browser-tests && npm test
+
+# Run ADK pipeline tests
+uv run pytest tests/ -v
 ```
 
 ### Project Structure
@@ -200,11 +239,17 @@ cd browser-tests && npm test
 ```
 ralph-loop/
 ├── .claude-plugin/       # Plugin manifest
-├── commands/             # Slash command definitions
+├── commands/             # Slash command definitions (/ralph-loop, /adk-loop, etc.)
 ├── hooks/                # Stop hook (core loop logic)
-├── scripts/              # Setup scripts
+├── scripts/              # Setup + bridge scripts
 ├── test/                 # Bats tests for bash scripts
 ├── browser-tests/        # Playwright tests for front-end loops
+├── adk_agents/           # ADK multi-agent pipeline (Python)
+│   ├── agents/           # 5 specialized LlmAgents
+│   ├── tools/            # Playwright bridge, file ops, loop control
+│   ├── agent.py          # Pipeline assembly (SequentialAgent + LoopAgent)
+│   └── runner.py         # CLI entry point
+├── tests/                # Python tests (pytest)
 └── .github/workflows/    # CI configuration
 ```
 

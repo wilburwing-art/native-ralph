@@ -1,263 +1,61 @@
-# Ralph Loop Plugin
+# native-ralph
 
-Implementation of the Ralph Wiggum technique for iterative, self-referential AI development loops in Claude Code.
+A single Claude Code skill that routes "I want to loop on X" tasks to the right Anthropic-native primitive, scaffolds a brief in the right shape, and kicks it off after an approval card.
 
-## What is Ralph Loop?
+The 5 primitives:
 
-Ralph Loop is a development methodology based on continuous AI agent loops. As Geoffrey Huntley describes it: **"Ralph is a Bash loop"** - a simple `while true` that repeatedly feeds an AI agent a prompt file, allowing it to iteratively improve its work until completion.
+| Primitive | Sweet spot |
+|---|---|
+| Auto mode | Multi-step local work end-to-end in this session |
+| `/loop` interval | Babysit a process, poll state |
+| `/loop` dynamic + ScheduleWakeup | Self-paced step-away-and-come-back work |
+| `/schedule` one-shot (Cowork) | Deep evaluation at a future date |
+| `/schedule` recurring (Cowork) | Daily/weekly maintenance + roadmap pickup |
 
-This technique is inspired by the Ralph Wiggum coding technique (named after the character from The Simpsons), embodying the philosophy of persistent iteration despite setbacks.
+See `docs/primitive-comparison.md` for tradeoffs per primitive.
 
-### Core Concept
+## What replaced
 
-This plugin implements Ralph using a **Stop hook** that intercepts Claude's exit attempts:
+This repo started as `ralph-loop`, a plugin implementing the Ralph Wiggum technique (continuous prompt loops via Stop hook + ADK multi-agent pipeline). That work is preserved in git history. As of 2026-05-03, the implementation is replaced with the native-ralph skill because the official Anthropic primitives (`/loop`, `/schedule`, ScheduleWakeup, Auto mode, Cowork routines) now cover what the Ralph Stop-hook was solving for.
 
-```bash
-# You run ONCE:
-/ralph-loop "Your task description" --completion-promise "DONE"
+The skill is the answer to "which native primitive should I use for this loop, and what's the right brief shape." It is NOT a new looping primitive itself.
 
-# Then Claude Code automatically:
-# 1. Works on the task
-# 2. Tries to exit
-# 3. Stop hook blocks exit
-# 4. Stop hook feeds the SAME prompt back
-# 5. Repeat until completion
-```
+## Install
 
-The loop happens **inside your current session** - you don't need external bash loops. The Stop hook in `hooks/stop-hook.sh` creates the self-referential feedback loop by blocking normal session exit.
-
-This creates a **self-referential feedback loop** where:
-- The prompt never changes between iterations
-- Claude's previous work persists in files
-- Each iteration sees modified files and git history
-- Claude autonomously improves by reading its own past work in files
-
-## Quick Start
+The skill lives at `skill/SKILL.md`. Symlink it into your Claude Code skills dir:
 
 ```bash
-/ralph-loop "Build a REST API for todos. Requirements: CRUD operations, input validation, tests. Output <promise>COMPLETE</promise> when done." --completion-promise "COMPLETE" --max-iterations 50
+ln -s "$(pwd)/skill" ~/.claude/skills/native-ralph
 ```
 
-Claude will:
-- Implement the API iteratively
-- Run tests and see failures
-- Fix bugs based on test output
-- Iterate until all requirements met
-- Output the completion promise when done
+Then `/native-ralph` is available in any Claude Code session.
 
-## Commands
+## Usage
 
-### /ralph-loop
+Trigger by saying things like:
 
-Start a Ralph loop in your current session.
+- "loop on this until tests pass"
+- "set up a daily routine for repo X"
+- "schedule a heatmap evaluation for May 15"
+- "babysit this build, ping me every 2 min"
+- "keep going on this refactor until done"
 
-**Usage:**
-```bash
-/ralph-loop "<prompt>" --max-iterations <n> --completion-promise "<text>"
-```
+The skill will walk you through 8 scoping questions, pick the primitive, fill a template, show an approval card, and kick it off.
 
-**Options:**
-- `--max-iterations <n>` - Stop after N iterations (default: unlimited)
-- `--completion-promise <text>` - Phrase that signals completion
-
-### /cancel-ralph
-
-Cancel the active Ralph loop.
-
-**Usage:**
-```bash
-/cancel-ralph
-```
-
-### /browser-loop
-
-Start a Ralph loop with Playwright browser test validation for front-end work.
-
-**Usage:**
-```bash
-/browser-loop "Fix mobile layout" --url http://localhost:3000 --max-iterations 15
-```
-
-See `browser-tests/README.md` for setup and usage.
-
-## Prompt Writing Best Practices
-
-### 1. Clear Completion Criteria
-
-❌ Bad: "Build a todo API and make it good."
-
-✅ Good:
-```markdown
-Build a REST API for todos.
-
-When complete:
-- All CRUD endpoints working
-- Input validation in place
-- Tests passing (coverage > 80%)
-- README with API docs
-- Output: <promise>COMPLETE</promise>
-```
-
-### 2. Incremental Goals
-
-❌ Bad: "Create a complete e-commerce platform."
-
-✅ Good:
-```markdown
-Phase 1: User authentication (JWT, tests)
-Phase 2: Product catalog (list/search, tests)
-Phase 3: Shopping cart (add/remove, tests)
-
-Output <promise>COMPLETE</promise> when all phases done.
-```
-
-### 3. Self-Correction
-
-❌ Bad: "Write code for feature X."
-
-✅ Good:
-```markdown
-Implement feature X following TDD:
-1. Write failing tests
-2. Implement feature
-3. Run tests
-4. If any fail, debug and fix
-5. Refactor if needed
-6. Repeat until all green
-7. Output: <promise>COMPLETE</promise>
-```
-
-### 4. Escape Hatches
-
-Always use `--max-iterations` as a safety net to prevent infinite loops on impossible tasks:
-
-```bash
-# Recommended: Always set a reasonable iteration limit
-/ralph-loop "Try to implement feature X" --max-iterations 20
-
-# In your prompt, include what to do if stuck:
-# "After 15 iterations, if not complete:
-#  - Document what's blocking progress
-#  - List what was attempted
-#  - Suggest alternative approaches"
-```
-
-**Note**: The `--completion-promise` uses exact string matching, so you cannot use it for multiple completion conditions (like "SUCCESS" vs "BLOCKED"). Always rely on `--max-iterations` as your primary safety mechanism.
-
-## Philosophy
-
-Ralph embodies several key principles:
-
-### 1. Iteration > Perfection
-Don't aim for perfect on first try. Let the loop refine the work.
-
-### 2. Failures Are Data
-"Deterministically bad" means failures are predictable and informative. Use them to tune prompts.
-
-### 3. Operator Skill Matters
-Success depends on writing good prompts, not just having a good model.
-
-### 4. Persistence Wins
-Keep trying until success. The loop handles retry logic automatically.
-
-## When to Use Ralph
-
-**Good for:**
-- Well-defined tasks with clear success criteria
-- Tasks requiring iteration and refinement (e.g., getting tests to pass)
-- Greenfield projects where you can walk away
-- Tasks with automatic verification (tests, linters)
-
-**Not good for:**
-- Tasks requiring human judgment or design decisions
-- One-shot operations
-- Tasks with unclear success criteria
-- Production debugging (use targeted debugging instead)
-
-## Real-World Results
-
-- Successfully generated 6 repositories overnight in Y Combinator hackathon testing
-- One $50k contract completed for $297 in API costs
-- Created entire programming language ("cursed") over 3 months using this approach
-
-## ADK Multi-Agent Pipeline
-
-The repo includes a Python-based multi-agent orchestration layer built on [Google ADK](https://github.com/google/adk-python). It uses 5 specialized agents wired into a `SequentialAgent` + `LoopAgent` pipeline for autonomous UI refinement.
-
-### Architecture
+## Layout
 
 ```
-SequentialAgent("ui_refinement_pipeline")
-├── ScreenshotAgent     → captures baseline screenshot + initial test run
-├── LoopAgent("refinement_loop", max_iterations=N)
-│   ├── AnalyzerAgent   → reads test failures, identifies UI issues
-│   ├── FixerAgent      → applies code changes to fix issues
-│   └── ValidatorAgent  → re-runs tests, calls exit_loop when passing
-└── ReporterAgent       → writes final summary report
+native-ralph/
+├── README.md                     # this file
+├── CLAUDE.md                     # repo conventions
+├── skill/                        # symlink target for ~/.claude/skills/native-ralph
+│   ├── SKILL.md                  # chooser logic + 12 steps
+│   └── templates/                # prompt scaffolds per primitive
+│       ├── cowork-recurring-maintenance.md
+│       ├── cowork-oneshot-deep-eval.md
+│       ├── loop-interval-poll.md
+│       ├── loop-dynamic-self-paced.md
+│       └── auto-mode-until-done.md
+└── docs/
+    └── primitive-comparison.md   # tradeoffs table, expanded
 ```
-
-Agents share data via ADK session state. Tools shell out to the existing Node.js Playwright scripts (`screenshot.js`, `validate.js`) — no reimplementation of browser logic.
-
-### Usage
-
-```bash
-# Via slash command
-/adk-loop --url http://localhost:3000 --max-iterations 10
-
-# Via CLI
-uv run -m adk_agents --url http://localhost:3000 --max-iterations 10
-```
-
-Requires `GOOGLE_API_KEY` environment variable for the default Gemini model. Override model via `ADK_MODEL` env var.
-
-### ADK Pipeline Tests
-
-```bash
-uv run pytest tests/ -v
-```
-
-## Development
-
-### Running Tests
-
-```bash
-# Install bats (macOS)
-brew install bats-core
-
-# Run bash script tests
-bats test/*.bats
-
-# Run browser tests (requires npm install in browser-tests/)
-cd browser-tests && npm test
-
-# Run ADK pipeline tests
-uv run pytest tests/ -v
-```
-
-### Project Structure
-
-```
-ralph-loop/
-├── .claude-plugin/       # Plugin manifest
-├── commands/             # Slash command definitions (/ralph-loop, /adk-loop, etc.)
-├── hooks/                # Stop hook (core loop logic)
-├── scripts/              # Setup + bridge scripts
-├── test/                 # Bats tests for bash scripts
-├── browser-tests/        # Playwright tests for front-end loops
-├── adk_agents/           # ADK multi-agent pipeline (Python)
-│   ├── agents/           # 5 specialized LlmAgents
-│   ├── tools/            # Playwright bridge, file ops, loop control
-│   ├── agent.py          # Pipeline assembly (SequentialAgent + LoopAgent)
-│   └── runner.py         # CLI entry point
-├── tests/                # Python tests (pytest)
-└── .github/workflows/    # CI configuration
-```
-
-## Learn More
-
-- Original technique: https://ghuntley.com/ralph/
-- Ralph Orchestrator: https://github.com/mikeyobrien/ralph-orchestrator
-
-## For Help
-
-Run `/help` in Claude Code for detailed command reference and examples.

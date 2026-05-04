@@ -1,71 +1,39 @@
-# Ralph Loop
+# native-ralph
 
-Claude Code plugin for self-referential AI development loops + ADK multi-agent pipeline for autonomous UI refinement.
+Single-skill repo. The skill at `skill/SKILL.md` routes "I want to loop on X" tasks to one of 5 Anthropic-native primitives, scaffolds a brief, and kicks it off.
 
-## Two Systems
+## Stack
 
-### 1. Bash Plugin (Stop Hook Loop)
+Pure markdown. No code. Skill is loaded by Claude Code's skill system; templates are filled in by the skill at invocation time.
 
-The core loop uses a Stop hook (`hooks/stop-hook.sh`) to intercept exit, re-inject prompts, and iterate via filesystem state.
+## Layout
 
-- `/ralph-loop` — start a loop with completion promise
-- `/cancel-ralph` — cancel active loop
-- `/browser-loop` — loop with Playwright browser test validation
-- State stored in `.claude/ralph-loop.local.md` (YAML frontmatter + markdown)
-
-### 2. ADK Multi-Agent Pipeline (Python)
-
-5 LlmAgents wired into `SequentialAgent` + `LoopAgent` for autonomous UI refinement:
-
-```
-SequentialAgent("ui_refinement_pipeline")
-├── ScreenshotAgent     → baseline screenshot + initial tests
-├── LoopAgent("refinement_loop")
-│   ├── AnalyzerAgent   → reads failures, identifies root causes
-│   ├── FixerAgent      → applies targeted code changes
-│   └── ValidatorAgent  → re-runs tests, exit_loop when passing
-└── ReporterAgent       → final summary
-```
-
-- `/adk-loop` — run ADK pipeline via slash command
-- CLI: `uv run -m adk_agents --url <URL> --max-iterations N`
-- Tools bridge to existing Node.js Playwright scripts (no reimplementation)
-- Requires `GOOGLE_API_KEY` for Gemini model
-
-## Project Structure
-
-```
-ralph-loop/
-├── commands/             # Slash commands (/ralph-loop, /adk-loop, etc.)
-├── hooks/                # Stop hook (bash loop core)
-├── scripts/              # Setup + bridge scripts
-├── adk_agents/           # ADK multi-agent pipeline (Python)
-│   ├── agents/           # 5 specialized LlmAgents
-│   ├── tools/            # Playwright bridge, file ops, loop control
-│   ├── agent.py          # Pipeline assembly
-│   └── runner.py         # CLI entry point
-├── test/                 # BATS tests (bash)
-├── tests/                # pytest tests (Python)
-└── browser-tests/        # Playwright test infrastructure (Node.js)
-```
-
-## Development
-
-```bash
-# Bash tests
-bats test/*.bats
-
-# Python tests
-uv run pytest tests/ -v
-
-# Browser tests
-cd browser-tests && npm test
-```
+- `skill/SKILL.md`: chooser logic, 12 steps from scoping through invocation
+- `skill/templates/*.md`: per-primitive prompt scaffolds with field placeholders
+- `docs/primitive-comparison.md`: detailed tradeoffs table
 
 ## Conventions
 
-- Python managed by `uv` — no pip/poetry
-- ADK agents use `output_key` to share state between pipeline steps
-- Tools that need Playwright shell out to `browser-tests/scripts/` Node.js scripts
-- `exit_loop` tool uses `tool_context.actions.escalate = True` to break LoopAgent
-- Config via env vars: `ADK_TARGET_URL`, `ADK_MAX_ITERATIONS`, `ADK_MODEL`, `GOOGLE_API_KEY`
+- The skill MUST be invoked via the `/native-ralph` slash command, not invented from training data
+- Template field placeholders use `{{field_name}}` (Mustache-style). Skill fills these from scoping answers
+- Failure modes per template are real, observed failures from the user's history (not hypotheticals)
+- Zero self-attribution: nothing in commits, PRs, or code refers to AI authorship
+- Updates to the skill propagate via the symlink at `~/.claude/skills/native-ralph`. Edit in this repo, no copy step needed
+
+## When updating templates
+
+Each template has 3 sections:
+1. Brief shape (the prompt scaffold itself)
+2. Fields to fill (what the chooser asks the user)
+3. Known failure modes (real prior incidents)
+
+If you observe a new failure mode in production, add it to the template's failure-mode section. The skill reads these at invocation time to pre-warn the user.
+
+## Relationship to other repos
+
+- `routines`: separate user-owned routine system. native-ralph delegates to `/schedule` (Cowork) when routing recurring work; routines repo holds the actual long-running rotation infrastructure.
+- `voice-squad`: orthogonal. Voice-driven multi-session control, not single-task scoping.
+
+## Pre-2026-05-03 history
+
+This repo started as `ralph-loop`, a Stop-hook + ADK plugin. The pivot to native-ralph happened on 2026-05-03 when the Anthropic-native primitives matured to cover the Ralph use case. Prior implementation is in git history.

@@ -37,3 +37,19 @@ If you observe a new failure mode in production, add it to the template's failur
 ## Pre-2026-05-03 history
 
 This repo started as `ralph-loop`, a Stop-hook + ADK plugin. The pivot to native-ralph happened on 2026-05-03 when the Anthropic-native primitives matured to cover the Ralph use case. Prior implementation is in git history.
+
+## Workflow
+
+Read by the user-level `/spec`, `/next` and `/gaps` commands. One backlog item per fresh session.
+
+- **Backlog files:** `BACKLOG.md` (the "Queue" section, top to bottom).
+- **Session rules:** the "Conventions" above hold for every item. Another session edits `skill/SKILL.md` and holds staged changes in this tree: commit only by named path and never include staged items you did not make. Use subagents for broad search.
+- **Verify:** run `/native-ralph` on one real request and read the brief it produces. A claimed option or step count comes from reading `skill/SKILL.md` that session.
+- **Blocked markers:** "Needs owner" in an item's text or under the "Needs owner" heading.
+- **Commit and push:** stage by named path only, and commit with explicit paths (`git commit -- <paths>`) so staged changes from other sessions stay staged. Push straight to main after `git fetch` shows nothing new upstream. No attribution lines.
+- **Standing rules:** the skill is invoked through the slash command and never reconstructed from memory. Template failure modes are real incidents. Edits go in this repo and reach `~/.claude/skills/native-ralph` through the symlink.
+- **Lenses for `/gaps`:**
+  1. `routing`: requests the chooser sends to the wrong primitive.
+  2. `templates`: failure modes without a dated incident, missing template for an option.
+  3. `docs-vs-skill`: README and comparison doc against the skill.
+  4. `drift`: uncommitted skill edits and the symlink target.
